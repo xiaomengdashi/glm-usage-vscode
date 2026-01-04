@@ -1,0 +1,121 @@
+{
+  "name": "glm-usage-vscode",
+  "displayName": "GLM/智谱 AI 实时用量监控",
+  "description": "GLM/智谱 AI 用量监控插件。提供实时 API 统计、MCP/Token 配额预警及 24 小时流量趋势可视化仪表盘。",
+  "version": "0.1.4",
+  "publisher": "Safphere",
+  "license": "MIT",
+  "icon": "icon.png",
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "categories": [
+    "Data Science",
+    "Visualization",
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "glm-usage.showDetails",
+        "title": "GLM: 打开数据看板 (Dashboard)",
+        "category": "GLM Usage",
+        "icon": "$(dashboard)"
+      },
+      {
+        "command": "glm-usage.refresh",
+        "title": "GLM: 刷新数据 (Refresh)",
+        "category": "GLM Usage",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "glm-usage.configure",
+        "title": "GLM: 配置 Token (Configure)",
+        "category": "GLM Usage",
+        "icon": "$(settings-gear)"
+      }
+    ],
+    "configuration": {
+      "title": "GLM 用量监控配置",
+      "properties": {
+        "glmUsage.authToken": {
+          "type": "string",
+          "default": "",
+          "description": "API Token (智谱 AI / Z.ai)。也可以通过环境变量 ANTHROPIC_AUTH_TOKEN 设置。",
+          "order": 1
+        },
+        "glmUsage.baseUrl": {
+          "type": "string",
+          "default": "https://open.bigmodel.cn/api/anthropic",
+          "enum": [
+            "https://open.bigmodel.cn/api/anthropic",
+            "https://dev.bigmodel.cn/api/anthropic",
+            "https://api.z.ai/api/anthropic"
+          ],
+          "enumDescriptions": [
+            "智谱AI官方平台",
+            "智谱AI开发平台",
+            "Z.ai平台"
+          ],
+          "description": "API 基础 URL",
+          "order": 2
+        },
+        "glmUsage.useMockData": {
+          "type": "boolean",
+          "default": false,
+          "description": "使用模拟数据演示功能",
+          "order": 4
+        },
+        "glmUsage.timeout": {
+          "type": "number",
+          "default": 30000,
+          "description": "请求超时时间 (毫秒)",
+          "order": 3
+        }
+      }
+    }
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "pretest": "npm run lint",
+    "test": "node ./test/runTest.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Safphere/glm-usage-vscode"
+  },
+  "bugs": {
+    "url": "https://github.com/Safphere/glm-usage-vscode/issues"
+  },
+  "homepage": "https://github.com/Safphere/glm-usage-vscode#readme",
+  "keywords": [
+    "glm",
+    "zhipu",
+    "zhipuai",
+    "智谱",
+    "智谱AI",
+    "用量监控",
+    "coding plan",
+    "token monitor",
+    "quota",
+    "配额",
+    "流量统计",
+    "z.ai"
+  ],
+  "devDependencies": {
+    "@types/vscode": "^1.74.0",
+    "@types/glob": "^8.1.0",
+    "@types/mocha": "^10.0.1",
+    "@types/node": "16.x",
+    "eslint": "^8.28.0",
+    "glob": "^8.1.0",
+    "mocha": "^10.1.0",
+    "typescript": "^4.9.4",
+    "@vscode/test-electron": "^2.2.3"
+  },
+  "dependencies": {}
+}
