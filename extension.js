@@ -188,7 +188,9 @@ class GLMUsageService {
         md.appendMarkdown(`**配额状态**\n\n`);
 
         const drawBar = (pct, color) => {
-            const filled = Math.round((pct / 100) * 15);
+            let val = parseFloat(pct);
+            if (isNaN(val)) val = 0;
+            const filled = Math.max(0, Math.min(15, Math.round((val / 100) * 15)));
             return `<span style="color:${color}">${'█'.repeat(filled)}</span><span style="color:#484f58">${'░'.repeat(15 - filled)}</span>`;
         };
 

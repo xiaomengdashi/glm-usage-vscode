@@ -2,7 +2,7 @@
   "name": "glm-usage-vscode",
   "displayName": "GLM/智谱 AI 实时用量监控",
   "description": "GLM/智谱 AI 用量监控插件。提供实时 API 统计、MCP/Token 配额预警及 24 小时流量趋势可视化仪表盘。",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "publisher": "Safphere",
   "license": "MIT",
   "icon": "icon.png",
