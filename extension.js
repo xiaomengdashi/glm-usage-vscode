@@ -135,10 +135,16 @@ class GLMUsageService {
             }));
         }
 
-        let quotas = { mcp: { used: 0, total: 4000, pct: 0 }, token5h: { pct: 0 } };
+        let quotas = { mcp: { used: 0, total: 0, pct: '0.00' }, token5h: { used: 0, total: 0, pct: '0.00' } };
         (qData.limits || []).forEach(l => {
-            if (l.type === 'TIME_LIMIT') quotas.mcp = { used: l.currentValue, total: l.usage, pct: Math.round(l.percentage * 100) };
-            if (l.type === 'TOKENS_LIMIT') quotas.token5h = { pct: parseFloat(l.percentage || 0) };
+            if (l.type === 'TIME_LIMIT') {
+                const pct = l.usage > 0 ? (l.currentValue / l.usage) * 100 : 0;
+                quotas.mcp = { used: l.currentValue, total: l.usage, pct: pct.toFixed(2) };
+            }
+            if (l.type === 'TOKENS_LIMIT') {
+                const pct = l.usage > 0 ? (l.currentValue / l.usage) * 100 : 0;
+                quotas.token5h = { used: l.currentValue, total: l.usage, pct: pct.toFixed(2) };
+            }
         });
 
         return {
@@ -190,29 +196,76 @@ class GLMUsageService {
         md.appendMarkdown(`${drawBar(data.quotas.mcp.pct, mcpColor)} &nbsp; ${data.quotas.mcp.used}/${data.quotas.mcp.total}\n\n`);
 
         md.appendMarkdown(`Token 限流 (5小时) &nbsp;**${data.quotas.token5h.pct}%**\n\n`);
-        md.appendMarkdown(`${drawBar(data.quotas.token5h.pct, t5hColor)}\n\n`);
+        md.appendMarkdown(`${drawBar(data.quotas.token5h.pct, t5hColor)} &nbsp; ${this.formatTokens(data.quotas.token5h.used || 0)}/${this.formatTokens(data.quotas.token5h.total || 0)}\n\n`);
 
-        md.appendMarkdown(`**调用趋势 (24H)**\n\n`);
         if (data.history.length > 0) {
-            const calls = data.history.map(x => x.calls);
-            const max = Math.max(...calls, 1);
-            const bars = [' ', '▂', '▃', '▄', '▅', '▆', '▇', '█'];
-            const sparkline = calls.map(c => {
-                if (c === 0) return '<span style="color:#30363d">_</span>';
-                const i = Math.floor((c / max) * (bars.length - 1));
-                return `<span style="color:#58a6ff">${bars[i]}</span>`;
-            }).join('');
-
-            md.appendMarkdown(`${sparkline}\n`);
+            // Calculate peak from full history
             const peak = data.history.reduce((a, b) => a.calls > b.calls ? a : b);
             const peakTime = peak.time.split(' ')[1] || peak.time;
-            md.appendMarkdown(`<span style="color:#8b949e">峰值: **${peak.calls}** 次 (${peakTime})</span>\n\n`);
+
+            md.appendMarkdown(`**调用趋势 (24H)** &nbsp;&nbsp;&nbsp; <span style="color:#8b949e;font-size:12px">峰值: **${peak.calls}** (${peakTime})</span>\n\n`);
+
+            md.appendMarkdown(`![](${this.generateTrendSVG(data.history)})\n\n`);
+        } else {
+            md.appendMarkdown(`**调用趋势 (24H)**\n\n`);
         }
 
         md.appendMarkdown(`---\n`);
         md.appendMarkdown(`[$(refresh) **刷新数据**](command:glm-usage.refresh) &nbsp;&nbsp; [$(settings) **配置 Token**](command:glm-usage.configure)`);
-
         return md;
+    }
+
+    generateTrendSVG(history) {
+        // Target: Fixed width to align with text above (~240px)
+        const barWidth = 8;
+        const gap = 2;
+        const totalPoints = 24;
+        const width = totalPoints * (barWidth + gap); // 240px
+        const height = 60; // Fixed total height
+
+        // 1. Prepare Data: Always 24 points. Pad left with 0 if needed.
+        let points = history;
+        if (points.length > totalPoints) {
+            points = points.slice(points.length - totalPoints);
+        }
+        while (points.length < totalPoints) {
+            points.unshift({ calls: 0, time: '' });
+        }
+
+        const maxCalls = Math.max(...points.map(h => h.calls), 1);
+
+        let rects = '';
+        points.forEach((p, i) => {
+            // Cap height at 45px max to reserve space for text
+            const h = p.calls === 0 ? 2 : Math.max(Math.round((p.calls / maxCalls) * 45), 2);
+            const x = i * (barWidth + gap);
+            const y = 45 - h; // Base line at 45
+
+            const isPeak = p.calls === maxCalls && maxCalls > 0;
+            const color = isPeak ? '#d2a8ff' : '#58a6ff';
+            const opacity = isPeak ? '1.0' : '0.8';
+            rects += `<rect x="${x}" y="${y}" width="${barWidth}" height="${h}" rx="2" fill="${color}" fill-opacity="${opacity}" />`;
+        });
+
+        const timeLabel = (index) => {
+            const t = points[index]?.time || '';
+            // Format: "09" from "09:00", strict check
+            return t ? t.split(':')[0] : '';
+        };
+
+        // Labels with fixed positions
+        const texts = `
+            <text x="0" y="58" font-family="sans-serif" font-size="9" fill="#8b949e" text-anchor="start">${timeLabel(0)}</text>
+            <text x="${width / 2}" y="58" font-family="sans-serif" font-size="9" fill="#8b949e" text-anchor="middle">${timeLabel(12)}</text>
+            <text x="${width - 2}" y="58" font-family="sans-serif" font-size="9" fill="#8b949e" text-anchor="end">${timeLabel(23)}</text>
+        `;
+
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+            ${rects}
+            ${texts}
+        </svg>`;
+
+        return `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
     }
 
     startPeriodicRefresh() { setInterval(() => this.fetchUsageData(), 60000); }
