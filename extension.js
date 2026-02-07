@@ -88,6 +88,7 @@ class GLMUsageService {
             const options = {
                 hostname: parsedUrl.hostname, port: 443, path: parsedUrl.pathname + parsedUrl.search,
                 method: 'GET', rejectUnauthorized: false, timeout: config.timeout,
+                agent: false,  // 禁用代理
                 headers: { 'Authorization': config.authToken, 'Content-Type': 'application/json' }
             };
             const req = https.request(options, (res) => {
@@ -201,12 +202,13 @@ class GLMUsageService {
         md.appendMarkdown(`${drawBar(data.quotas.token5h.pct, t5hColor)} &nbsp; ${this.formatTokens(data.quotas.token5h.used || 0)}/${this.formatTokens(data.quotas.token5h.total || 0)}\n\n`);
 
         if (data.history.length > 0) {
-            // Calculate peak from full history
-            const peak = data.history.reduce((a, b) => a.calls > b.calls ? a : b);
-            const peakTime = peak.time.split(' ')[1] || peak.time;
-
-            md.appendMarkdown(`**调用趋势 (24H)** &nbsp;&nbsp;&nbsp; <span style="color:#8b949e;font-size:12px">峰值: **${peak.calls}** (${peakTime})</span>\n\n`);
-
+            // Calculate peak from full history, filter out null/undefined calls
+            const validHistory = data.history.filter(h => h.calls != null && h.calls !== undefined);
+            if (validHistory.length > 0) {
+                const peak = validHistory.reduce((a, b) => a.calls > b.calls ? a : b);
+                const peakTime = peak.time.split(' ')[1] || peak.time;
+                md.appendMarkdown(`**调用趋势 (24H)** &nbsp;&nbsp;&nbsp; <span style="color:#8b949e;font-size:12px">峰值: **${peak.calls}** (${peakTime})</span>\n\n`);
+            }
             md.appendMarkdown(`![](${this.generateTrendSVG(data.history)})\n\n`);
         } else {
             md.appendMarkdown(`**调用趋势 (24H)**\n\n`);
@@ -234,7 +236,7 @@ class GLMUsageService {
             points.unshift({ calls: 0, time: '' });
         }
 
-        const maxCalls = Math.max(...points.map(h => h.calls), 1);
+        const maxCalls = Math.max(...points.map(h => h.calls || 0), 1);
 
         let rects = '';
         points.forEach((p, i) => {
